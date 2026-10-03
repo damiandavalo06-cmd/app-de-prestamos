@@ -781,62 +781,161 @@ function convertSimulationToLoan() {
     }, 100);
 }
  // ==========================================
-// FUNCIONES DEL SIMULADOR (las que llama el HTML)
+// LISTENER DIRECTO PARA BOTONES DEL SIMULADOR
 // ==========================================
-function getSimulationData() {
-    const name = document.getElementById('sim-client-name').value.trim();
-    const amount = parseFloat(document.getElementById('sim-amount').value) || 0;
-    const rate = parseFloat(document.getElementById('sim-rate').value) || 0;
-    const installments = parseInt(document.getElementById('sim-installments').value) || 1;
-    const freq = document.getElementById('sim-freq').value;
+document.addEventListener('click', function (e) {
+    // Detectar botón "Enviar Texto" / WhatsApp
+    const btnWhatsApp = e.target.closest('button') && (
+        e.target.closest('button').innerText.includes('Enviar Texto') || 
+        e.target.closest('button').querySelector('.fa-whatsapp')
+    ) ? e.target.closest('button') : null;
 
-    const total = amount + (amount * (rate / 100));
-    const installmentVal = Math.round(total / installments);
-    const freqMap = { diario: 'diarias', semanal: 'semanales', quincenal: 'quincenales', mensual: 'mensuales' };
+    if (btnWhatsApp) {
+        e.preventDefault();
+        const clientNameInput = document.getElementById('sim-client-name');
+        const amountInput = document.getElementById('sim-amount');
+        const rateInput = document.getElementById('sim-rate');
+        const installmentsInput = document.getElementById('sim-installments');
+        const freqInput = document.getElementById('sim-freq');
 
-    return { name, amount, rate, installments, freq, total, installmentVal, freqLabel: freqMap[freq] || 'semanales' };
-}
+        const clientName = (clientNameInput && clientNameInput.value.trim() !== '') ? clientNameInput.value : 'Cliente';
+        const amount = amountInput ? (parseFloat(amountInput.value) || 0) : 0;
+        const rate = rateInput ? (parseFloat(rateInput.value) || 0) : 0;
+        const installments = installmentsInput ? (parseInt(installmentsInput.value) || 1) : 1;
+        const freq = freqInput ? freqInput.value : 'semanal';
 
-function shareQuoteWA() {
-    const d = getSimulationData();
-    const message =
-        `Hola *${d.name || 'Cliente'}*, te comparto el presupuesto solicitado:\n\n` +
-        `• *Monto del préstamo:* $${d.amount.toLocaleString()}\n` +
-        `• *Plan de pago:* ${d.installments} cuotas ${d.freqLabel} de $${d.installmentVal.toLocaleString()}\n` +
-        `• *Total a pagar:* $${Math.round(d.total).toLocaleString()}\n\n` +
-        `Quedamos a disposición para gestionar tu solicitud.`;
+        const total = amount + (amount * (rate / 100));
+        const installmentVal = installments > 0 ? Math.round(total / installments) : Math.round(total);
 
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
-}
+        const freqTextMap = { 'diario': 'diarias', 'semanal': 'semanales', 'quincenal': 'quincenales', 'mensual': 'mensuales' };
+        const freqLabel = freqTextMap[freq] || 'semanales';
 
-function downloadQuoteImage() {
-    const card = document.getElementById('sim-card-to-capture');
-    if (!card) return;
-    if (typeof html2canvas === 'undefined') {
-        alert('No se cargó la librería html2canvas. Revisá tu conexión a internet.');
+        const message = `Hola *${clientName}*, te comparto el presupuesto solicitado:\n\n` +
+                        `• *Monto del préstamo:* $${amount.toLocaleString()}\n` +
+                        `• *Plan de pago:* ${installments} cuotas ${freqLabel} de $${installmentVal.toLocaleString()}\n` +
+                        `• *Total a pagar:* $${Math.round(total).toLocaleString()}\n\n` +
+                        `Quedamos a disposición para gestionar tu solicitud.`;
+
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
         return;
     }
-    html2canvas(card).then(canvas => {
-        const link = document.createElement('a');
-        link.download = 'presupuesto-prestamo.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    });
-}
 
-function applySimulationToModal() {
-    const d = getSimulationData();
+    // Detectar botón "Descargar Imagen"
+    const btnDownload = e.target.closest('button') && (
+        e.target.closest('button').innerText.includes('Descargar Imagen') || 
+        e.target.closest('button').querySelector('.fa-download')
+    ) ? e.target.closest('button') : null;
 
-    openLoanModal();
+    if (btnDownload) {
+        e.preventDefault();
+        const card = document.getElementById('sim-result-card') || document.querySelector('.bg-indigo-900') || document.querySelector('.bg-blue-900');
+        
+        if (typeof html2canvas === 'undefined') {
+            alert('Para descargar la imagen de la tarjeta, necesitas la librería html2canvas integrada en tu HTML.');
+            return;
+        }
 
-    document.getElementById('loan-amount').value = d.amount;
-    document.getElementById('loan-rate').value = d.rate;
-    document.getElementById('loan-installments').value = d.installments;
-    document.getElementById('loan-freq').value = d.freq;
+        if (card) {
+            html2canvas(card).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'presupuesto-prestamo.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        } else {
+            alert('No se encontró la tarjeta para descargar.');
+        }
+        return;
+    }
 
-    // Si el simulador tiene un nombre, se precarga como cliente nuevo
-    const select = document.getElementById('loan-client-select');
-    select.value = 'new';
-    toggleInlineClientForm('new');
-    if (d.name) document.getElementById('new-client-name').value = d.name;
-}
+    // Detectar botón "Crear Préstamo"
+    const btnCreateLoan = e.target.closest('button') && (
+        e.target.closest('button').innerText.includes('Crear Préstamo') || 
+        e.target.closest('button').querySelector('.fa-file-circle-plus')
+    ) ? e.target.closest('button') : null;
+
+    if (btnCreateLoan) {
+        e.preventDefault();
+        // Abre el modal llamando a la función existente o quitando la clase hidden
+        const modal = document.getElementById('modal-loan') || document.getElementById('modal-prestamo');
+        if (modal) {
+            modal.classList.remove('hidden');
+        } else if (typeof openLoanModal === 'function') {
+            openLoanModal();
+        }
+
+        // Copia los valores del simulador al formulario de nuevo préstamo
+        const clientNameInput = document.getElementById('sim-client-name');
+        const amountInput = document.getElementById('sim-amount');
+        const rateInput = document.getElementById('sim-rate');
+        const installmentsInput = document.getElementById('sim-installments');
+        const freqInput = document.getElementById('sim-freq');
+
+        setTimeout(() => {
+            const loanClient = document.getElementById('loan-client-name') || document.getElementById('loan-client');
+            const loanAmount = document.getElementById('loan-amount');
+            const loanRate = document.getElementById('loan-rate');
+            const loanInstallments = document.getElementById('loan-installments');
+            const loanFreq = document.getElementById('loan-freq');
+
+            if (loanClient && clientNameInput) loanClient.value = clientNameInput.value;
+            if (loanAmount && amountInput) loanAmount.value = amountInput.value;
+            if (loanRate && rateInput) loanRate.value = rateInput.value;
+            if (loanInstallments && installmentsInput) loanInstallments.value = installmentsInput.value;
+            if (loanFreq && freqInput) loanFreq.value = freqInput.value;
+        }, 100);
+        return;
+    }
+});
+// ==========================================
+// APERTURA FORZOSA DE MODAL "CREAR PRÉSTAMO"
+// ==========================================
+document.addEventListener('click', function (e) {
+    // Detecta cualquier clic en botones que contengan "Préstamo" o "Prestamo"
+    const target = e.target.closest('button, a, div');
+    if (!target) return;
+
+    const text = target.innerText ? target.innerText.toLowerCase() : '';
+    const isLoanBtn = text.includes('crear préstamo') || text.includes('crear prestamo') || text.includes('nuevo préstamo') || target.querySelector('.fa-file-circle-plus');
+
+    if (isLoanBtn) {
+        e.preventDefault();
+
+        // Busca el modal en tu HTML por cualquier coincidencia de ID o clase
+        const modal = document.getElementById('modal-loan') || 
+                      document.getElementById('modal-prestamo') || 
+                      document.getElementById('modal-nuevo-prestamo') ||
+                      document.querySelector('.modal') ||
+                      document.querySelector('[id*="loan"]') ||
+                      document.querySelector('[id*="prestamo"]');
+
+        if (modal) {
+            // Remueve las clases habituales que ocultan elementos en Tailwind y CSS
+            modal.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+
+            // Copia los valores cargados en el simulador al modal
+            const simName = document.getElementById('sim-client-name');
+            const simAmount = document.getElementById('sim-amount');
+            const simRate = document.getElementById('sim-rate');
+            const simInstallments = document.getElementById('sim-installments');
+            const simFreq = document.getElementById('sim-freq');
+
+            const loanName = document.getElementById('loan-client-name') || document.getElementById('loan-client');
+            const loanAmount = document.getElementById('loan-amount');
+            const loanRate = document.getElementById('loan-rate');
+            const loanInstallments = document.getElementById('loan-installments');
+            const loanFreq = document.getElementById('loan-freq');
+
+            if (loanName && simName) loanName.value = simName.value;
+            if (loanAmount && simAmount) loanAmount.value = simAmount.value;
+            if (loanRate && simRate) loanRate.value = simRate.value;
+            if (loanInstallments && simInstallments) loanInstallments.value = simInstallments.value;
+            if (loanFreq && simFreq) loanFreq.value = simFreq.value;
+        } else {
+            console.error('No se encontró ningún elemento modal en el HTML.');
+        }
+    }
+});
