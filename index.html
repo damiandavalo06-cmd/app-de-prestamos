@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrestApp- Sistema de Gestión</title>
+    <!-- Tailwind CSS (CDN para interfaz rápida) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+     <!-- html2canvas para generar imagen del presupuesto -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased pb-12">
+
+    <!-- BARRA DE NAVEGACIÓN -->
+    <header class="bg-indigo-900 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-sack-dollar text-yellow-400 text-3xl"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">PrestApp</h1>
+                    <p class="text-xs text-indigo-200">Sistema de Control Financiero</p>
+                </div>
+            </div>
+
+            <!-- Conmutador de Rol (Admin vs Cobrador) -->
+            <div class="flex items-center bg-indigo-950 p-1.5 rounded-lg border border-indigo-700">
+                <!-- Indicador de Estado Offline / Online -->
+<div id="connection-status" class="flex items-center bg-green-900/80 text-green-300 px-3 py-1.5 rounded-lg border border-green-700 text-xs font-semibold space-x-2">
+    <span id="connection-dot" class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+    <span id="connection-status-text">En Línea</span>
+</div>
+                <span class="text-xs mr-2 text-indigo-300 font-medium">Modo:</span>
+                <button id="role-admin-btn" onclick="setRole('admin')" class="px-3 py-1 rounded text-xs font-semibold bg-indigo-600 text-white transition-all shadow">
+                    <i class="fa-solid fa-user-shield mr-1"></i> Admin
+                </button>
+                <button id="role-cobrador-btn" onclick="setRole('cobrador')" class="px-3 py-1 rounded text-xs font-semibold text-indigo-300 hover:text-white transition-all">
+                    <i class="fa-solid fa-motorcycle mr-1"></i> Cobrador
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 mt-6">
+        
+        <!-- PESTAÑAS NAVEGACIÓN -->
+        <nav class="flex space-x-2 border-b border-gray-200 pb-2 mb-6 overflow-x-auto">
+            
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 text-white shadow">
+                <i class="fa-solid fa-chart-pie mr-2"></i>Dashboard
+            </button>
+            <!-- PESTAÑA SIMULADOR -->
+<button onclick="switchTab('simulator')" id="tab-simulator" class="tab-btn px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg">
+    <i class="fa-solid fa-calculator mr-2"></i>Simulador
+</button>
+            <button onclick="switchTab('loans')" id="tab-loans" class="tab-btn px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg">
+                <i class="fa-solid fa-hand-holding-dollar mr-2"></i>Préstamos Activos
+            </button>
+            <button onclick="switchTab('pawns')" id="tab-pawns" class="tab-btn px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg">
+                <i class="fa-solid fa-boxes-stacked mr-2"></i>Empeños
+            </button>
+            <button onclick="switchTab('clients')" id="tab-clients" class="tab-btn px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg">
+                <i class="fa-solid fa-users mr-2"></i>Clientes & Historial
+            </button>
+            <button onclick="switchTab('whatsapp')" id="tab-whatsapp" class="tab-btn px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg">
+                <i class="fa-brands fa-whatsapp text-green-600 mr-2"></i>Bot Mensajes
+            </button>
+        </nav>
+
+        <!-- CONTENIDO PRINCIPAL -->
+<!-- TAB: SIMULADOR DE PRÉSTAMOS -->
+<section id="view-simulator" class="tab-content hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
+        
+        <!-- Formulario del Simulador -->
+        <div class="bg-white p-6 rounded-xl shadow border border-gray-100">
+            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fa-solid fa-calculator text-indigo-600 mr-2 text-xl"></i>Simulador de Préstamos
+            </h2>
+            <p class="text-xs text-gray-500 mb-6">Calcula cuotas e intereses y genera el presupuesto para el cliente antes de registrarlo.</p>
+            
+            <form id="sim-form" oninput="calculateSimulation()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Nombre / Referencia Cliente (Opcional)</label>
+                    <input type="text" id="sim-client-name" placeholder="Ej: Juan Pérez" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Monto a Prestar ($)</label>
+                    <input type="number" id="sim-amount" value="50000" step="500" min="0" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Tasa Interés (%)</label>
+                        <input type="number" id="sim-rate" value="20" step="0.5" min="0" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Cant. Cuotas</label>
+                        <input type="number" id="sim-installments" value="4" min="1" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Frecuencia de Pago</label>
+                    <select id="sim-freq" class="w-full border rounded-lg p-2.5 text-sm bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="diario">Diario</option>
+                        <option value="semanal" selected>Semanal</option>
+                        <option value="quincenal">Quincenal</option>
+                        <option value="mensual">Mensual</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tarjeta de Presupuesto (Vista Previa y Descarga de Imagen) -->
+        <div class="flex flex-col justify-between">
+            
+            <!-- TARJETA CAPTURABLE -->
+            <div id="sim-card-to-capture" class="bg-indigo-900 text-white p-6 rounded-xl shadow-lg border border-indigo-800">
+                <div class="flex justify-between items-center border-b border-indigo-800 pb-3 mb-4">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-sack-dollar text-yellow-400 text-2xl"></i>
+                        <span class="font-bold text-lg tracking-wide">PrestApp</span>
+                    </div>
+                    <span class="text-xs bg-indigo-800 text-indigo-200 px-3 py-1 rounded-full font-medium">Presupuesto</span>
+                </div>
+
+                <p class="text-xs text-indigo-300 uppercase font-semibold">Cliente: <span id="sim-res-client-display" class="text-white font-bold">Consumidor Final</span></p>
+
+                <div class="mt-4">
+                    <span class="text-xs text-indigo-300 uppercase font-semibold">Monto Total a Devolver</span>
+                    <h3 class="text-3xl font-extrabold text-yellow-400 mt-1" id="sim-res-total">$0</h3>
+                </div>
+
+                <div class="mt-6 space-y-2.5 text-sm border-t border-indigo-800/80 pt-4">
+                    <div class="flex justify-between">
+                        <span class="text-indigo-200">Capital Solicitado:</span>
+                        <strong id="sim-res-capital" class="text-white">$0</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-indigo-200">Interés Generado:</span>
+                        <strong id="sim-res-profit" class="text-green-400">$0</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-indigo-200">Valor por Cuota:</span>
+                        <strong id="sim-res-installment-val" class="text-yellow-300 font-bold">$0</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-indigo-200">Plan Seleccionado:</span>
+                        <span id="sim-res-plan-text" class="font-medium text-white">4 cuotas semanales</span>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-3 border-t border-indigo-800/80 text-center">
+                    <p class="text-[10px] text-indigo-300">Presupuesto válido por 48 hs. Sujeto a aprobación crediticia.</p>
+                </div>
+            </div>
+
+            <!-- BOTONES DE ACCIÓN DE PRESUPUESTO -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
+                <button onclick="shareQuoteWA()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-3 rounded-lg text-xs shadow flex items-center justify-center">
+                    <i class="fa-brands fa-whatsapp text-sm mr-1.5"></i> Enviar Texto
+                </button>
+                <button onclick="downloadQuoteImage()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-3 rounded-lg text-xs shadow flex items-center justify-center">
+                    <i class="fa-solid fa-download text-sm mr-1.5"></i> Descargar Imagen
+                </button>
+                <button onclick="applySimulationToModal()" class="bg-yellow-400 hover:bg-yellow-500 text-indigo-950 font-bold py-2.5 px-3 rounded-lg text-xs shadow flex items-center justify-center">
+                    <i class="fa-solid fa-file-circle-plus text-sm mr-1.5"></i> Crear Préstamo
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+        <!-- TAB: DASHBOARD -->
+        <section id="view-dashboard" class="tab-content">
+            <!-- Métricas Clave -->
+            <div id="admin-metrics" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-5 rounded-xl shadow border border-gray-100 flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+                        <i class="fa-solid fa-money-bill-wave text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-semibold uppercase">Capital en la Calle</p>
+                        <h3 id="stat-capital" class="text-2xl font-bold text-gray-800">$0</h3>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl shadow border border-gray-100 flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                        <i class="fa-solid fa-arrow-trend-up text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-semibold uppercase">Ganancia Estimada</p>
+                        <h3 id="stat-profit" class="text-2xl font-bold text-green-600">$0</h3>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl shadow border border-gray-100 flex items-center">
+                    <div class="p-3 rounded-full bg-amber-100 text-amber-600 mr-4">
+                        <i class="fa-solid fa-gem text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-semibold uppercase">Empeños Custodiados</p>
+                        <h3 id="stat-pawns" class="text-2xl font-bold text-gray-800">$0</h3>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl shadow border border-gray-100 flex items-center">
+                    <div class="p-3 rounded-full bg-red-100 text-red-600 mr-4">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-semibold uppercase">Tasa de Morosidad</p>
+                        <h3 id="stat-delinquency" class="text-2xl font-bold text-red-600">0%</h3>
+                    </div>
+                </div>
+            </div>
+
+          <!-- SECCIÓN DE VENCIMIENTOS DENTRO DEL DASHBOARD -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    
+    <!-- TARJETA 1: VENCEN HOY -->
+    <div class="bg-white p-5 rounded-xl shadow border border-red-100">
+        <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+            <h3 class="font-bold text-gray-800 flex items-center text-base">
+                <i class="fa-solid fa-bell text-red-500 mr-2 animate-bounce"></i>Vencen Hoy
+            </h3>
+            <span id="badge-today-count" class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded-full">0</span>
+        </div>
+        <div id="today-due-container" class="space-y-3 max-h-80 overflow-y-auto">
+            <!-- Se llena automáticamente con JS -->
+        </div>
+    </div>
+
+    <!-- TARJETA 2: PRÓXIMOS VENCIMIENTOS -->
+    <div class="bg-white p-5 rounded-xl shadow border border-gray-100">
+        <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+            <h3 class="font-bold text-gray-800 flex items-center text-base">
+                <i class="fa-solid fa-calendar-days text-indigo-600 mr-2"></i>Próximos Vencimientos
+            </h3>
+            <span id="badge-next-count" class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-0.5 rounded-full">0</span>
+        </div>
+        <div id="next-due-container" class="space-y-3 max-h-80 overflow-y-auto">
+            <!-- Se llena automáticamente con JS -->
+        </div>
+    </div>
+
+</div>
+        </section>
+
+        <!-- TAB: PRESTAMOS -->
+        <section id="view-loans" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Préstamos Registrados</h2>
+                <button onclick="openLoanModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg shadow text-sm flex items-center">
+                    <i class="fa-solid fa-plus mr-2"></i>Nuevo Préstamo
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4" id="loans-list">
+                <!-- Tarjetas de préstamos inyectadas por JS -->
+            </div>
+        </section>
+
+        <!-- TAB: EMPEÑOS -->
+        <section id="view-pawns" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Garantías y Empeños</h2>
+                <button onclick="openPawnModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-4 py-2 rounded-lg shadow text-sm flex items-center">
+                    <i class="fa-solid fa-boxes-stacked mr-2"></i>Registrar Empeño
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="pawns-list">
+                <!-- Tarjetas de empeño inyectadas por JS -->
+            </div>
+        </section>
+
+        <!-- TAB: CLIENTES -->
+        <section id="view-clients" class="tab-content hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Directorio de Clientes</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="clients-list">
+                <!-- Clientes inyectados por JS -->
+            </div>
+        </section>
+
+        <!-- TAB: WHATSAPP BOT -->
+        <section id="view-whatsapp" class="tab-content hidden">
+            <div class="bg-white p-6 rounded-xl shadow border border-gray-100 max-w-2xl mx-auto">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fa-brands fa-whatsapp text-green-500 text-2xl mr-2"></i>Configuración de Bot de Recordatorios
+                </h2>
+                <p class="text-sm text-gray-600 mb-4">Personaliza la plantilla que se enviará automáticamente a los clientes un día antes de la fecha de vencimiento.</p>
+                
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold uppercase text-gray-500 mb-1">Plantilla de Mensaje</label>
+                    <textarea id="wa-template" rows="4" class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-green-500 focus:outline-none">Hola {NOMBRE}, recordatorio de PrestApp: Tu cuota N° {CUOTA} por un valor de ${MONTO} vence el día {FECHA}. Agradecemos tu puntualidad.</textarea>
+                    <span class="text-xs text-gray-400">Variables disponibles: {NOMBRE}, {CUOTA}, {MONTO}, {FECHA}</span>
+                </div>
+
+                <button onclick="alert('Plantilla guardada correctamente.')" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow">
+                    Guardar Configuración
+                </button>
+            </div>
+        </section>
+
+    </div>
+<!-- BOTÓN FLOTANTE FIJO PARA NUEVO PRÉSTAMO -->
+    <div class="fixed bottom-6 right-6 z-40">
+        <button onclick="openLoanModal()" 
+                class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-2xl flex items-center justify-center space-x-2 transition-transform transform hover:scale-105 active:scale-95 focus:outline-none border-2 border-indigo-400/30 group">
+            <i class="fa-solid fa-plus text-xl"></i>
+            <span class="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ease-in-out font-bold text-sm">
+                Nuevo Préstamo
+            </span>
+        </button>
+    </div>
+    <!-- MODAL NUEVO PRÉSTAMO -->
+    <div id="modal-loan" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-lg font-bold text-gray-800">Otorgar Nuevo Préstamo</h3>
+                <button onclick="closeLoanModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <form id="loan-form" onsubmit="handleCreateLoan(event)" class="space-y-4">
+                <!-- Selector Cliente -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Cliente</label>
+                    <select id="loan-client-select" onchange="toggleInlineClientForm(this.value)" class="w-full border rounded-lg p-2 text-sm bg-gray-50">
+                        <!-- Inyectado por JS -->
+                    </select>
+                </div>
+
+                <!-- Campos Nuevo Cliente Inline -->
+                <div id="inline-client-fields" class="hidden p-3 bg-indigo-50 rounded-lg space-y-3 border border-indigo-100">
+                    <p class="text-xs font-bold text-indigo-800">Datos del Nuevo Cliente:</p>
+                    <input type="text" id="new-client-name" placeholder="Nombre Completo" class="w-full border rounded p-2 text-sm">
+                    <input type="text" id="new-client-phone" placeholder="Teléfono (WhatsApp)" class="w-full border rounded p-2 text-sm">
+                    <input type="text" id="new-client-dni" placeholder="DNI / Documento" class="w-full border rounded p-2 text-sm">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Monto ($)</label>
+                        <input type="number" id="loan-amount" required class="w-full border rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Tasa de Interés (%)</label>
+                        <input type="number" id="loan-rate" value="20" required class="w-full border rounded-lg p-2 text-sm">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Modalidad</label>
+                        <select id="loan-freq" class="w-full border rounded-lg p-2 text-sm bg-gray-50">
+                            <option value="diario">Diario</option>
+                            <option value="semanal" selected>Semanal</option>
+                            <option value="quincenal">Quincenal</option>
+                            <option value="mensual">Mensual</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Cantidad de Cuotas</label>
+                        <input type="number" id="loan-installments" value="4" required class="w-full border rounded-lg p-2 text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Mora Diaria por Atraso ($)</label>
+                    <input type="number" id="loan-late-fee" value="500" required class="w-full border rounded-lg p-2 text-sm">
+                </div>
+
+                <div class="pt-3 border-t flex justify-end space-x-2">
+                    <button type="button" onclick="closeLoanModal()" class="px-4 py-2 border rounded-lg text-sm font-semibold text-gray-600">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">Crear Préstamo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR PRÉSTAMO -->
+    <div id="modal-edit-loan" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-lg font-bold text-gray-800">Editar Préstamo</h3>
+                <button onclick="closeEditLoanModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="edit-loan-form" onsubmit="handleSaveEditLoan(event)" class="space-y-4">
+                <!-- ID Oculto -->
+                <input type="hidden" id="edit-loan-id">
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Monto Principal ($)</label>
+                    <input type="number" id="edit-loan-amount" required class="w-full border rounded-lg p-2 text-sm">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Tasa de Interés (%)</label>
+                        <input type="number" id="edit-loan-rate" step="0.5" required class="w-full border rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Modalidad</label>
+                        <select id="edit-loan-freq" class="w-full border rounded-lg p-2 text-sm bg-gray-50">
+                            <option value="diario">Diario</option>
+                            <option value="semanal">Semanal</option>
+                            <option value="quincenal">Quincenal</option>
+                            <option value="mensual">Mensual</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Mora Diaria ($)</label>
+                    <input type="number" id="edit-loan-late-fee" required class="w-full border rounded-lg p-2 text-sm">
+                </div>
+
+                <div class="pt-3 border-t flex justify-end space-x-2">
+                    <button type="button" onclick="closeEditLoanModal()" class="px-4 py-2 border rounded-lg text-sm font-semibold text-gray-600">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- JS Principal -->
+    <script src="app.js"></script>
+</body>
+</html>

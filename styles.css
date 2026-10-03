@@ -1,0 +1,22 @@
+/* Custom Styles for PrestApp */
+
+body {
+    background-color: #f3f4f6;
+}
+
+/* Tabs activas */
+.tab-btn.active {
+    background-color: #36d636;
+    color: #ffffff;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Animaciones suaves */
+.tab-content {
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
